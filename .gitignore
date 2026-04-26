@@ -1,3 +1,4 @@
 # Ignore __pycache__ folder in src
 src/__pycache__/
 src/utils_private.py
+books/
