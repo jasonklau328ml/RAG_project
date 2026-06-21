@@ -4,3 +4,4 @@ src/utils_private.py
 chromadb_store/
 books/
 data/
+session/
