@@ -5,3 +5,4 @@ chromadb_store/
 books/
 data/
 session/
+__pycache__/
