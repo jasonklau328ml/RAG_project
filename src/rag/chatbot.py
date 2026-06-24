@@ -55,21 +55,29 @@ class RagNewsChatbot:
         self.session_store.save(chat_id, memory)
         return chat_id
 
-    def rename_chat(self, old_chat_id: str, new_chat_id: str) -> str:
+    def rename_chat(self, old_chat_id: str, new_chat_id: str, overwrite: bool = False) -> str:
         if old_chat_id == new_chat_id:
             return old_chat_id
-        if old_chat_id not in self.chat_sessions:
-            raise KeyError(f"Chat session not opened: {old_chat_id}")
 
-        self.chat_sessions[new_chat_id] = self.chat_sessions.pop(old_chat_id)
-        new_path = self.session_store.save(new_chat_id, self.chat_sessions[new_chat_id]["memory"])
-        self.chat_sessions[new_chat_id]["session_path"] = new_path
+        new_path = self.session_store.rename_chat(old_chat_id, new_chat_id, overwrite=overwrite)
 
-        old_path = self.session_store.path_for(old_chat_id)
-        if old_path.exists() and old_path != new_path:
-            old_path.unlink()
+        if old_chat_id in self.chat_sessions:
+            self.chat_sessions[new_chat_id] = self.chat_sessions.pop(old_chat_id)
+            self.chat_sessions[new_chat_id]["session_path"] = new_path
 
         return new_chat_id
+
+    def delete_chat(self, chat_id: str, *, close_open_session: bool = True, missing_ok: bool = False) -> bool:
+        deleted = self.session_store.delete_chat(chat_id, missing_ok=missing_ok)
+        if close_open_session:
+            self.chat_sessions.pop(chat_id, None)
+        return deleted
+
+    def list_chat_ids(self) -> list[str]:
+        return self.session_store.list_chat_ids()
+
+    def count_chat_ids(self) -> int:
+        return self.session_store.count_chat_ids()
 
     def chat(self, chat_id: str, message: str):
         if chat_id not in self.chat_sessions:
