@@ -2,7 +2,7 @@ import asyncio
 from datetime import datetime
 from pathlib import Path
 from typing import Any
-
+    
 import chainlit as cl
 from llama_index.core.llms import ChatMessage
 
@@ -89,23 +89,6 @@ def session_actions(session_store, limit: int = 8) -> list[cl.Action]:
         )
 
     return actions
-
-
-def format_sources(response, max_sources: int = 3) -> str:
-    source_nodes = getattr(response, "source_nodes", []) or []
-    if not source_nodes:
-        return ""
-
-    lines = ["", "**Sources**"]
-    for rank, source_node in enumerate(source_nodes[:max_sources], start=1):
-        metadata = source_node.node.metadata or {}
-        article_date = metadata.get("article_date", "unknown date")
-        article_title = metadata.get("article_title", metadata.get("file_name", "unknown article"))
-        preview = source_node.node.get_content().strip().replace("\n", " ")[:500]
-        lines.append(f"{rank}. **{article_date} | {article_title}**")
-        lines.append(f"   {preview}")
-
-    return "\n".join(lines)
 
 
 def format_recent_history(messages: list[ChatMessage], limit: int = 8) -> str:
@@ -207,5 +190,5 @@ async def handle_message(message: cl.Message):
         await answer.update()
         return
 
-    answer.content = f"{response.response}{format_sources(response)}"
+    answer.content = response.response
     await answer.update()
