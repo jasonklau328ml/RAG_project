@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import json
 import re
 from datetime import datetime, timezone
@@ -94,3 +96,54 @@ class JsonChatSessionStore:
 
     def list(self) -> list[Path]:
         return sorted(self.session_dir.glob("*.json"), key=lambda path: path.stat().st_mtime, reverse=True)
+
+    def list_chat_ids(self) -> list[str]:
+        chat_ids: list[str] = []
+        for session_path in self.list():
+            try:
+                payload = json.loads(session_path.read_text(encoding="utf-8"))
+            except (json.JSONDecodeError, OSError):
+                chat_ids.append(self.display_name_for(session_path))
+                continue
+
+            chat_id = payload.get("chat_id")
+            if isinstance(chat_id, str) and chat_id.strip():
+                chat_ids.append(chat_id)
+            else:
+                chat_ids.append(self.display_name_for(session_path))
+        return chat_ids
+
+    def count_chat_ids(self) -> int:
+        return len(self.list())
+
+    def delete_chat(self, chat_id: str, *, missing_ok: bool = False) -> bool:
+        session_path = self.path_for(chat_id)
+        if not session_path.exists():
+            if missing_ok:
+                return False
+            raise FileNotFoundError(f"Saved chat session not found: {session_path}")
+
+        session_path.unlink()
+        return True
+
+    def rename_chat(self, old_chat_id: str, new_chat_id: str, *, overwrite: bool = False) -> Path:
+        old_path = self.path_for(old_chat_id)
+        if not old_path.exists():
+            raise FileNotFoundError(f"Saved chat session not found: {old_path}")
+
+        new_path = self.path_for(new_chat_id)
+        if new_path.exists() and not overwrite and old_path != new_path:
+            raise FileExistsError(f"Target chat session already exists: {new_path}")
+
+        payload = json.loads(old_path.read_text(encoding="utf-8"))
+        payload["chat_id"] = new_chat_id
+        payload["updated_at"] = datetime.now(timezone.utc).isoformat()
+
+        temp_path = new_path.with_suffix(".tmp")
+        temp_path.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
+        temp_path.replace(new_path)
+
+        if old_path != new_path and old_path.exists():
+            old_path.unlink()
+
+        return new_path
