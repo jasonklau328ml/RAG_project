@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from llama_index.core import Settings
-from llama_index.core.chat_engine import ContextChatEngine
+from llama_index.core.chat_engine import CondensePlusContextChatEngine
 from llama_index.core.llms import ChatMessage
 from llama_index.core.memory import ChatMemoryBuffer
 from llama_index.core.query_engine import RetrieverQueryEngine
@@ -85,7 +85,8 @@ class RagNewsChatbot:
 
         session = self.chat_sessions[chat_id]
         if session["chat_engine"] is None:
-            session["chat_engine"] = ContextChatEngine.from_defaults(
+            # Condense follow-up questions with saved memory before retrieval, then answer with context.
+            session["chat_engine"] = CondensePlusContextChatEngine.from_defaults(
                 retriever=self.hybrid_retriever,
                 memory=session["memory"],
                 llm=self.llm,
@@ -125,3 +126,8 @@ def print_sources(response, max_sources: int = 3) -> None:
         article_title = metadata.get("article_title", metadata.get("file_name", "unknown article"))
         print(f"\nSource {rank}: {article_date} | {article_title}")
         print(source_node.node.get_content()[:800])
+
+
+def print_response(response) -> None:
+    llm_response = getattr(response, "response", []) or []
+    print(llm_response)
