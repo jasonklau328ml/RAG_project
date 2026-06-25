@@ -1,4 +1,6 @@
+import os
 from pathlib import Path
+from typing import Literal
 
 from llama_index.core import Settings
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
@@ -9,24 +11,91 @@ from .config import (
     DEFAULT_CHAT_SYSTEM_PROMPT,
     DEFAULT_COLLECTION_NAME,
     DEFAULT_EMBED_MODEL_NAME,
+    DEFAULT_HUGGINGFACE_MODEL_KEY,
+    DEFAULT_LLM_PROVIDER,
     DEFAULT_MEMORY_TOKEN_LIMIT,
     DEFAULT_OLLAMA_MODEL,
     DEFAULT_TOP_K,
+    HUGGINGFACE_CHAT_MODELS,
+    LLM_PROVIDER_HUGGINGFACE,
+    LLM_PROVIDER_OLLAMA,
 )
+from .huggingface_llm import HuggingFaceChatLLM
 from .knowledge_base import ChromaKnowledgeBase
 from .session_store import JsonChatSessionStore
+
+
+LlmProvider = Literal["ollama", "huggingface"]
+
+
+def _load_huggingface_api_key() -> str:
+    for env_name in ("HF_TOKEN", "HUGGINGFACEHUB_API_TOKEN", "HUGGINGFACE_API_KEY"):
+        api_key = os.getenv(env_name, "").strip()
+        if api_key:
+            return api_key
+
+    try:
+        from src import utils_private
+    except ImportError as error:
+        raise RuntimeError("Hugging Face API key not found. Add hf_api_key to src/utils_private.py.") from error
+
+    api_key = getattr(utils_private, "hf_api_key", "")
+    if not isinstance(api_key, str) or not api_key.strip():
+        raise RuntimeError("Hugging Face API key is empty. Set hf_api_key in src/utils_private.py.")
+    return api_key.strip()
+
+
+def resolve_huggingface_model(model_key_or_id: str) -> str:
+    return HUGGINGFACE_CHAT_MODELS.get(model_key_or_id, model_key_or_id)
+
+
+def create_llm(
+    *,
+    llm_provider: LlmProvider = DEFAULT_LLM_PROVIDER,
+    ollama_model: str = DEFAULT_OLLAMA_MODEL,
+    huggingface_model: str = DEFAULT_HUGGINGFACE_MODEL_KEY,
+    huggingface_provider: str = "auto",
+    huggingface_api_key: str | None = None,
+):
+    if llm_provider == LLM_PROVIDER_OLLAMA:
+        return Ollama(model=ollama_model, request_timeout=120.0), ollama_model
+
+    if llm_provider == LLM_PROVIDER_HUGGINGFACE:
+        model_id = resolve_huggingface_model(huggingface_model)
+        return (
+            HuggingFaceChatLLM(
+                model=model_id,
+                api_key=huggingface_api_key or _load_huggingface_api_key(),
+                provider=huggingface_provider,
+            ),
+            model_id,
+        )
+
+    supported = ", ".join([LLM_PROVIDER_OLLAMA, LLM_PROVIDER_HUGGINGFACE])
+    raise ValueError(f"Unsupported llm_provider {llm_provider!r}. Choose one of: {supported}")
 
 
 def configure_llama_index(
     news_dir: Path,
     embed_model_name: str = DEFAULT_EMBED_MODEL_NAME,
+    llm_provider: LlmProvider = DEFAULT_LLM_PROVIDER,
     ollama_model: str = DEFAULT_OLLAMA_MODEL,
-) -> None:
+    huggingface_model: str = DEFAULT_HUGGINGFACE_MODEL_KEY,
+    huggingface_provider: str = "auto",
+    huggingface_api_key: str | None = None,
+) -> str:
     if not news_dir.exists():
         raise FileNotFoundError(f"News folder not found: {news_dir}")
 
     Settings.embed_model = HuggingFaceEmbedding(model_name=embed_model_name)
-    Settings.llm = Ollama(model=ollama_model, request_timeout=120.0)
+    Settings.llm, resolved_llm_model = create_llm(
+        llm_provider=llm_provider,
+        ollama_model=ollama_model,
+        huggingface_model=huggingface_model,
+        huggingface_provider=huggingface_provider,
+        huggingface_api_key=huggingface_api_key,
+    )
+    return resolved_llm_model
 
 
 def create_rag_app(
@@ -36,15 +105,23 @@ def create_rag_app(
     news_dir: Path,
     collection_name: str = DEFAULT_COLLECTION_NAME,
     embed_model_name: str = DEFAULT_EMBED_MODEL_NAME,
+    llm_provider: LlmProvider = DEFAULT_LLM_PROVIDER,
     ollama_model: str = DEFAULT_OLLAMA_MODEL,
+    huggingface_model: str = DEFAULT_HUGGINGFACE_MODEL_KEY,
+    huggingface_provider: str = "auto",
+    huggingface_api_key: str | None = None,
     final_top_k: int = DEFAULT_TOP_K,
     memory_token_limit: int = DEFAULT_MEMORY_TOKEN_LIMIT,
     chat_system_prompt: str = DEFAULT_CHAT_SYSTEM_PROMPT,
 ) -> RagNewsChatbot:
-    configure_llama_index(
+    resolved_llm_model = configure_llama_index(
         news_dir=news_dir,
         embed_model_name=embed_model_name,
+        llm_provider=llm_provider,
         ollama_model=ollama_model,
+        huggingface_model=huggingface_model,
+        huggingface_provider=huggingface_provider,
+        huggingface_api_key=huggingface_api_key,
     )
 
     knowledge_base = ChromaKnowledgeBase(chroma_dir, collection_name)
@@ -52,7 +129,8 @@ def create_rag_app(
         session_dir,
         collection_name=collection_name,
         embed_model_name=embed_model_name,
-        llm_model=ollama_model,
+        llm_provider=llm_provider,
+        llm_model=resolved_llm_model,
     )
     return RagNewsChatbot(
         knowledge_base=knowledge_base,

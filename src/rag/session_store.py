@@ -9,7 +9,7 @@ from typing import Any
 from llama_index.core.llms import ChatMessage, MessageRole
 from llama_index.core.memory import ChatMemoryBuffer
 
-from .config import DEFAULT_COLLECTION_NAME, DEFAULT_EMBED_MODEL_NAME, DEFAULT_OLLAMA_MODEL
+from .config import DEFAULT_COLLECTION_NAME, DEFAULT_EMBED_MODEL_NAME, DEFAULT_LLM_PROVIDER, DEFAULT_OLLAMA_MODEL
 
 
 class JsonChatSessionStore:
@@ -20,11 +20,13 @@ class JsonChatSessionStore:
         session_dir: Path,
         collection_name: str = DEFAULT_COLLECTION_NAME,
         embed_model_name: str = DEFAULT_EMBED_MODEL_NAME,
+        llm_provider: str = DEFAULT_LLM_PROVIDER,
         llm_model: str = DEFAULT_OLLAMA_MODEL,
     ):
         self.session_dir = session_dir
         self.collection_name = collection_name
         self.embed_model_name = embed_model_name
+        self.llm_provider = llm_provider
         self.llm_model = llm_model
         self.session_dir.mkdir(parents=True, exist_ok=True)
 
@@ -71,6 +73,7 @@ class JsonChatSessionStore:
             "chat_id": chat_id,
             "collection_name": self.collection_name,
             "embedding_model": self.embed_model_name,
+            "llm_provider": self.llm_provider,
             "llm_model": self.llm_model,
             "updated_at": datetime.now(timezone.utc).isoformat(),
             "messages": [self.message_to_dict(message) for message in memory.get_all()],
