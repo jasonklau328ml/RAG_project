@@ -5,7 +5,7 @@ from pathlib import Path
 DEFAULT_COLLECTION_NAME = "news_chat"
 DEFAULT_EMBED_MODEL_NAME = "BAAI/bge-small-en-v1.5"
 DEFAULT_OLLAMA_MODEL = "gemma3:1b"
-DEFAULT_LLM_PROVIDER = "huggingface" # ollama or huggingface
+DEFAULT_LLM_PROVIDER = "ollama" # ollama or huggingface
 LLM_PROVIDER_OLLAMA = "ollama"
 LLM_PROVIDER_HUGGINGFACE = "huggingface"
 DEFAULT_HUGGINGFACE_MODEL_KEY = "deepseek_v3"

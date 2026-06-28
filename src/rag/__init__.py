@@ -17,6 +17,15 @@ from .config import (
 from .factory import configure_llama_index, create_llm, create_rag_app, resolve_huggingface_model
 from .huggingface_llm import HuggingFaceChatLLM
 from .knowledge_base import ChromaKnowledgeBase
+from .observability import (
+    DEFAULT_PHOENIX_ENDPOINT,
+    DEFAULT_PHOENIX_PROJECT_NAME,
+    PHOENIX_INSTALL_COMMAND,
+    PhoenixObservabilityStatus,
+    setup_phoenix_observability,
+    start_phoenix_server,
+    trace_chat_session,
+)
 from .retrieval import HybridRetriever, reciprocal_rank_fusion
 from .session_store import JsonChatSessionStore
 
@@ -35,6 +44,10 @@ __all__ = [
     "RagPaths",
     "default_paths",
     "HuggingFaceChatLLM",
+    "DEFAULT_PHOENIX_ENDPOINT",
+    "DEFAULT_PHOENIX_PROJECT_NAME",
+    "PHOENIX_INSTALL_COMMAND",
+    "PhoenixObservabilityStatus",
     "HybridRetriever",
     "reciprocal_rank_fusion",
     "ChromaKnowledgeBase",
@@ -46,4 +59,7 @@ __all__ = [
     "create_llm",
     "create_rag_app",
     "resolve_huggingface_model",
+    "setup_phoenix_observability",
+    "start_phoenix_server",
+    "trace_chat_session",
 ]

@@ -1,4 +1,5 @@
 import asyncio
+import os
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -13,8 +14,12 @@ from src.rag import (
     DEFAULT_MEMORY_TOKEN_LIMIT,
     DEFAULT_OLLAMA_MODEL,
     DEFAULT_TOP_K as DEFAULT_TOP_K_VALUE,
+    DEFAULT_PHOENIX_ENDPOINT,
+    DEFAULT_PHOENIX_PROJECT_NAME,
     RagNewsChatbot,
     create_rag_app,
+    setup_phoenix_observability,
+    trace_chat_session,
 )
 
 
@@ -29,6 +34,20 @@ OLLAMA_MODEL = DEFAULT_OLLAMA_MODEL
 DEFAULT_TOP_K = DEFAULT_TOP_K_VALUE
 MEMORY_TOKEN_LIMIT = DEFAULT_MEMORY_TOKEN_LIMIT
 CHAT_SYSTEM_PROMPT = DEFAULT_CHAT_SYSTEM_PROMPT
+ENABLE_PHOENIX = os.getenv("ENABLE_PHOENIX", "0").lower() in {"1", "true", "yes"}
+LAUNCH_PHOENIX_SERVER = os.getenv("LAUNCH_PHOENIX_SERVER", "0").lower() in {"1", "true", "yes"}
+PHOENIX_PROJECT_NAME = os.getenv("PHOENIX_PROJECT_NAME", DEFAULT_PHOENIX_PROJECT_NAME)
+PHOENIX_COLLECTOR_ENDPOINT = os.getenv("PHOENIX_COLLECTOR_ENDPOINT", DEFAULT_PHOENIX_ENDPOINT)
+
+# Configure Phoenix once when Chainlit imports this file. If the Phoenix packages are not
+# installed yet, the app still runs and /observability shows the install command.
+PHOENIX_OBSERVABILITY = setup_phoenix_observability(
+    project_name=PHOENIX_PROJECT_NAME,
+    endpoint=PHOENIX_COLLECTOR_ENDPOINT,
+    enabled=ENABLE_PHOENIX,
+    launch_server=LAUNCH_PHOENIX_SERVER,
+    raise_on_missing=False,
+)
 
 _rag_app: RagNewsChatbot | None = None
 
@@ -104,6 +123,28 @@ def format_recent_history(messages: list[ChatMessage], limit: int = 8) -> str:
     return "".join(lines)
 
 
+def format_observability_status() -> str:
+    status = PHOENIX_OBSERVABILITY
+    lines = [
+        f"Phoenix enabled: **{status.enabled}**",
+        f"Project: `{status.project_name}`",
+        f"Collector endpoint: `{status.endpoint}`",
+        f"UI: {status.ui_url}",
+    ]
+    if status.message:
+        lines.append(status.message)
+    if not status.enabled:
+        lines.append(f"Install command: `{status.install_command}`")
+    return "\n".join(lines)
+
+
+def run_traced_chat(rag_app: RagNewsChatbot, chat_id: str, text: str):
+    # The context manager adds the saved chat id to every LlamaIndex span created during
+    # this turn, which makes Phoenix group multi-turn traces by conversation/session.
+    with trace_chat_session(chat_id, metadata={"interface": "chainlit"}):
+        return rag_app.chat(chat_id, text)
+
+
 async def ensure_active_chat(chat_id: str | None = None, overwrite: bool = False) -> str:
     rag_app = await asyncio.to_thread(get_rag_app)
     active_chat_id = chat_id or chainlit_thread_id() or new_chat_id()
@@ -172,6 +213,10 @@ async def handle_message(message: cl.Message):
         await cl.Message(content=f"Started a new chat: **{chat_id}**").send()
         return
 
+    if text == "/observability":
+        await cl.Message(content=format_observability_status()).send()
+        return
+
     if text.startswith("/load "):
         chat_id = text.removeprefix("/load ").strip()
         await ensure_active_chat(chat_id=chat_id)
@@ -184,7 +229,7 @@ async def handle_message(message: cl.Message):
     await answer.send()
 
     try:
-        response = await asyncio.to_thread(rag_app.chat, chat_id, text)
+        response = await asyncio.to_thread(run_traced_chat, rag_app, chat_id, text)
     except Exception as exc:
         answer.content = f"Sorry, the RAG app failed while answering: `{exc}`"
         await answer.update()
