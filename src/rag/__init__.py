@@ -6,16 +6,27 @@ from .config import (
     DEFAULT_HUGGINGFACE_MODEL_KEY,
     DEFAULT_LLM_PROVIDER,
     DEFAULT_MEMORY_TOKEN_LIMIT,
+    DEFAULT_NEWS_SOURCE_DIR_NAMES,
     DEFAULT_OLLAMA_MODEL,
     DEFAULT_TOP_K,
+    E5_QUERY_INSTRUCTION,
+    E5_TEXT_INSTRUCTION,
     HUGGINGFACE_CHAT_MODELS,
     LLM_PROVIDER_HUGGINGFACE,
     LLM_PROVIDER_OLLAMA,
     RagPaths,
+    default_news_dirs,
     default_paths,
 )
+from .embeddings import create_embedding_model
 from .factory import configure_llama_index, create_llm, create_rag_app, resolve_huggingface_model
 from .huggingface_llm import HuggingFaceChatLLM
+from .ingestion_observability import (
+    IngestionDocumentMetric,
+    IngestionPhoenixObserver,
+    current_ram_usage_mb,
+    estimate_token_count,
+)
 from .knowledge_base import ChromaKnowledgeBase
 from .observability import (
     DEFAULT_PHOENIX_ENDPOINT,
@@ -28,6 +39,7 @@ from .observability import (
 )
 from .retrieval import HybridRetriever, reciprocal_rank_fusion
 from .session_store import JsonChatSessionStore
+from .vector_store_admin import ChromaCollectionSummary, ChromaVectorStoreAdmin
 
 __all__ = [
     "DEFAULT_CHAT_SYSTEM_PROMPT",
@@ -36,14 +48,22 @@ __all__ = [
     "DEFAULT_HUGGINGFACE_MODEL_KEY",
     "DEFAULT_LLM_PROVIDER",
     "DEFAULT_MEMORY_TOKEN_LIMIT",
+    "DEFAULT_NEWS_SOURCE_DIR_NAMES",
     "DEFAULT_OLLAMA_MODEL",
     "DEFAULT_TOP_K",
+    "E5_QUERY_INSTRUCTION",
+    "E5_TEXT_INSTRUCTION",
     "HUGGINGFACE_CHAT_MODELS",
     "LLM_PROVIDER_HUGGINGFACE",
     "LLM_PROVIDER_OLLAMA",
     "RagPaths",
+    "default_news_dirs",
     "default_paths",
     "HuggingFaceChatLLM",
+    "IngestionDocumentMetric",
+    "IngestionPhoenixObserver",
+    "current_ram_usage_mb",
+    "estimate_token_count",
     "DEFAULT_PHOENIX_ENDPOINT",
     "DEFAULT_PHOENIX_PROJECT_NAME",
     "PHOENIX_INSTALL_COMMAND",
@@ -51,11 +71,14 @@ __all__ = [
     "HybridRetriever",
     "reciprocal_rank_fusion",
     "ChromaKnowledgeBase",
+    "ChromaCollectionSummary",
+    "ChromaVectorStoreAdmin",
     "JsonChatSessionStore",
     "RagNewsChatbot",
     "print_sources",
     "print_response",
     "configure_llama_index",
+    "create_embedding_model",
     "create_llm",
     "create_rag_app",
     "resolve_huggingface_model",
