@@ -50,6 +50,7 @@ from .observability import (
     PhoenixObservabilityStatus,
     setup_phoenix_observability,
     start_phoenix_server,
+    trace_rag_chat_turn,
     trace_chat_session,
 )
 from .retrieval import HybridRetriever, reciprocal_rank_fusion
@@ -112,5 +113,6 @@ __all__ = [
     "resolve_huggingface_model",
     "setup_phoenix_observability",
     "start_phoenix_server",
+    "trace_rag_chat_turn",
     "trace_chat_session",
 ]

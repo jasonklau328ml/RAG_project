@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 from urllib.parse import urlparse
 from urllib.request import urlopen
@@ -220,3 +221,54 @@ def trace_chat_session(
         stack.enter_context(using_user(user_id) if user_id else nullcontext())
         stack.enter_context(using_metadata(metadata) if metadata else nullcontext())
         yield
+
+
+@contextmanager
+def trace_rag_chat_turn(
+    *,
+    chat_id: str,
+    interface: str,
+    collection_name: str,
+    embed_model_name: str,
+    llm_model: str,
+    message: str,
+) -> Iterator[Any]:
+    """Create a visible parent span for one user chat turn.
+
+    LlamaIndex instrumentation should create child spans for retrieval and LLM calls, but this
+    parent span guarantees Phoenix has one trace per Chainlit message and stores app-level config.
+    """
+    try:
+        from opentelemetry import trace
+        from opentelemetry.trace import Status, StatusCode
+        from openinference.semconv.trace import OpenInferenceSpanKindValues, SpanAttributes
+    except (ImportError, ModuleNotFoundError):
+        yield
+        return
+
+    tracer = trace.get_tracer("rag.chainlit")
+    with tracer.start_as_current_span("rag.chat_turn") as span:
+        # Phoenix Sessions use the OpenInference session.id attribute. Set it directly on
+        # this manual parent span so Chainlit turns appear under the loaded saved-chat name.
+        span.set_attribute(SpanAttributes.SESSION_ID, chat_id)
+        span.set_attribute(SpanAttributes.OPENINFERENCE_SPAN_KIND, OpenInferenceSpanKindValues.CHAIN.value)
+        span.set_attribute(SpanAttributes.INPUT_MIME_TYPE, "application/json")
+        span.set_attribute(
+            SpanAttributes.INPUT_VALUE,
+            json.dumps({"message": message or ""}, ensure_ascii=False),
+        )
+        span.set_attribute("rag.interface", interface)
+        span.set_attribute("rag.chat_id", chat_id)
+        span.set_attribute("rag.collection_name", collection_name)
+        span.set_attribute("rag.embedding_model", embed_model_name)
+        span.set_attribute("rag.llm_model", llm_model)
+        span.set_attribute("rag.user_message.length", len(message or ""))
+        try:
+            yield span
+            span.set_attribute("rag.chat_turn.status", "ok")
+            span.set_status(Status(StatusCode.OK))
+        except Exception as error:
+            span.set_attribute("rag.chat_turn.status", "error")
+            span.record_exception(error)
+            span.set_status(Status(StatusCode.ERROR, str(error)))
+            raise
