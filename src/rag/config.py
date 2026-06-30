@@ -3,9 +3,9 @@ from pathlib import Path
 
 
 # DEFAULT_COLLECTION_NAME = "news_chat_multilingual_e5_base"
-DEFAULT_COLLECTION_NAME = "test_collection_name"
-# DEFAULT_EMBED_MODEL_NAME = "intfloat/multilingual-e5-base"
-DEFAULT_EMBED_MODEL_NAME = "BAAI/bge-small-en-v1.5"
+DEFAULT_COLLECTION_NAME = "news_chat_multilingual_e5_base"
+DEFAULT_EMBED_MODEL_NAME = "intfloat/multilingual-e5-base"
+# DEFAULT_EMBED_MODEL_NAME = "BAAI/bge-small-en-v1.5"
 E5_QUERY_INSTRUCTION = "query: "
 E5_TEXT_INSTRUCTION = "passage: "
 # DEFAULT_NEWS_SOURCE_DIR_NAMES = (

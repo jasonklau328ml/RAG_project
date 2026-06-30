@@ -1,4 +1,5 @@
 import asyncio
+import json
 import os
 from datetime import datetime
 from pathlib import Path
@@ -19,6 +20,7 @@ from src.rag import (
     RagNewsChatbot,
     create_rag_app,
     setup_phoenix_observability,
+    trace_rag_chat_turn,
     trace_chat_session,
 )
 
@@ -34,7 +36,7 @@ OLLAMA_MODEL = DEFAULT_OLLAMA_MODEL
 DEFAULT_TOP_K = DEFAULT_TOP_K_VALUE
 MEMORY_TOKEN_LIMIT = DEFAULT_MEMORY_TOKEN_LIMIT
 CHAT_SYSTEM_PROMPT = DEFAULT_CHAT_SYSTEM_PROMPT
-ENABLE_PHOENIX = os.getenv("ENABLE_PHOENIX", "0").lower() in {"1", "true", "yes"}
+ENABLE_PHOENIX = os.getenv("ENABLE_PHOENIX", "1").lower() in {"1", "true", "yes"}
 LAUNCH_PHOENIX_SERVER = os.getenv("LAUNCH_PHOENIX_SERVER", "0").lower() in {"1", "true", "yes"}
 PHOENIX_PROJECT_NAME = os.getenv("PHOENIX_PROJECT_NAME", DEFAULT_PHOENIX_PROJECT_NAME)
 PHOENIX_COLLECTOR_ENDPOINT = os.getenv("PHOENIX_COLLECTOR_ENDPOINT", DEFAULT_PHOENIX_ENDPOINT)
@@ -88,11 +90,21 @@ def chainlit_thread_id() -> str | None:
     return None
 
 
+def initial_chat_id() -> str:
+    """Create a readable RAG chat id instead of reusing Chainlit's internal thread UUID."""
+    return new_chat_id()
+
+
 def current_chat_id() -> str:
     chat_id = cl.user_session.get("chat_id")
     if not chat_id:
         raise RuntimeError("No active chat session. Start or load a chat first.")
     return chat_id
+
+
+def active_chat_id() -> str | None:
+    """Return the selected RAG chat id, if the user has chosen or started one."""
+    return cl.user_session.get("chat_id")
 
 
 def session_actions(session_store, limit: int = 8) -> list[cl.Action]:
@@ -110,17 +122,24 @@ def session_actions(session_store, limit: int = 8) -> list[cl.Action]:
     return actions
 
 
-def format_recent_history(messages: list[ChatMessage], limit: int = 8) -> str:
+async def send_chat_history(chat_id: str, messages: list[ChatMessage]) -> None:
+    """Replay every saved message as normal Chainlit chat bubbles."""
     if not messages:
-        return "This saved chat is empty. Send a message to begin."
+        await cl.Message(content=f"Loaded **{chat_id}**. This saved chat is empty.").send()
+        return
 
-    lines = ["Loaded the saved chat. Recent messages:"]
-    for message in messages[-limit:]:
-        role = message.role.value if hasattr(message.role, "value") else str(message.role)
-        content = (message.content or "").strip()
-        if content:
-            lines.append(f"\n**{role.title()}**: {content}")
-    return "".join(lines)
+    await cl.Message(content=f"Loaded **{chat_id}**. Replaying {len(messages)} saved message(s).").send()
+    for saved_message in messages:
+        role = saved_message.role.value if hasattr(saved_message.role, "value") else str(saved_message.role)
+        content = (saved_message.content or "").strip()
+        if not content:
+            continue
+
+        # Use Chainlit's message type instead of one combined Markdown summary so the UI
+        # shows the full notebook-created conversation in the same format as live chat.
+        message_type = "user_message" if role == "user" else "assistant_message"
+        author = "User" if role == "user" else "Assistant"
+        await cl.Message(content=content, author=author, type=message_type).send()
 
 
 def format_observability_status() -> str:
@@ -134,6 +153,7 @@ def format_observability_status() -> str:
     if status.message:
         lines.append(status.message)
     if not status.enabled:
+        lines.append("Set `ENABLE_PHOENIX=1` before starting Chainlit to enable tracing.")
         lines.append(f"Install command: `{status.install_command}`")
     return "\n".join(lines)
 
@@ -142,12 +162,33 @@ def run_traced_chat(rag_app: RagNewsChatbot, chat_id: str, text: str):
     # The context manager adds the saved chat id to every LlamaIndex span created during
     # this turn, which makes Phoenix group multi-turn traces by conversation/session.
     with trace_chat_session(chat_id, metadata={"interface": "chainlit"}):
-        return rag_app.chat(chat_id, text)
+        # This parent span guarantees Phoenix shows one trace for each Chainlit message,
+        # even if a library-level child instrumentor changes behavior across versions.
+        with trace_rag_chat_turn(
+            chat_id=chat_id,
+            interface="chainlit",
+            collection_name=COLLECTION_NAME,
+            embed_model_name=EMBED_MODEL_NAME,
+            llm_model=OLLAMA_MODEL,
+            message=text,
+        ) as turn_span:
+            response = rag_app.chat(chat_id, text)
+            if turn_span is not None:
+                # Phoenix renders session turns from OpenInference input/output attributes.
+                turn_span.set_attribute("output.mime_type", "application/json")
+                turn_span.set_attribute(
+                    "output.value",
+                    json.dumps({"response": response.response or ""}, ensure_ascii=False),
+                )
+                turn_span.set_attribute("rag.assistant_response.length", len(response.response or ""))
+            return response
 
 
 async def ensure_active_chat(chat_id: str | None = None, overwrite: bool = False) -> str:
     rag_app = await asyncio.to_thread(get_rag_app)
-    active_chat_id = chat_id or chainlit_thread_id() or new_chat_id()
+    # Keep local RAG chat sessions under user-facing names. Chainlit thread ids are UI-internal
+    # UUIDs and should not create extra JSON chat files or Phoenix session names.
+    active_chat_id = chat_id or initial_chat_id()
     await asyncio.to_thread(rag_app.open_chat, active_chat_id, True, overwrite)
 
     cl.user_session.set("chat_id", active_chat_id)
@@ -164,17 +205,17 @@ async def send_session_picker(content: str) -> None:
 
 @cl.on_chat_start
 async def start_session():
-    chat_id = await ensure_active_chat()
     await send_session_picker(
-        "Welcome. A new RAG chat session is ready. Use the buttons below to start fresh or load a saved chat. "
-        f"Current session: **{chat_id}**"
+        "Welcome. Use the buttons below to start fresh or load a saved RAG chat. "
+        "No local chat file is created until you choose one or send a message."
     )
 
 
 @cl.on_chat_resume
 async def resume_session(thread: dict[str, Any]):
-    chat_id = str(thread.get("id") or chainlit_thread_id() or new_chat_id())
-    await ensure_active_chat(chat_id=chat_id)
+    # Chainlit resume ids are not the same as our saved RAG chat ids, so ask the user to
+    # choose an existing saved chat instead of creating a UUID-named local session.
+    await send_session_picker("Choose a saved RAG chat to continue:")
 
 
 @cl.action_callback("new_chat")
@@ -195,7 +236,7 @@ async def load_chat_action(action: cl.Action):
     await ensure_active_chat(chat_id=chat_id)
     messages = await asyncio.to_thread(rag_app.memory_messages, chat_id)
 
-    await cl.Message(content=format_recent_history(messages)).send()
+    await send_chat_history(chat_id, messages)
     await action.remove()
 
 
@@ -221,10 +262,12 @@ async def handle_message(message: cl.Message):
         chat_id = text.removeprefix("/load ").strip()
         await ensure_active_chat(chat_id=chat_id)
         messages = await asyncio.to_thread(rag_app.memory_messages, chat_id)
-        await cl.Message(content=format_recent_history(messages)).send()
+        await send_chat_history(chat_id, messages)
         return
 
-    chat_id = current_chat_id()
+    chat_id = active_chat_id()
+    if not chat_id:
+        chat_id = await ensure_active_chat()
     answer = cl.Message(content="")
     await answer.send()
 
