@@ -21,6 +21,21 @@ from .config import (
 from .embeddings import create_embedding_model
 from .factory import configure_llama_index, create_llm, create_rag_app, resolve_huggingface_model
 from .huggingface_llm import HuggingFaceChatLLM
+from .ingestion_config import (
+    DEFAULT_INGESTION_CHUNK_OVERLAP,
+    DEFAULT_INGESTION_CHUNK_SIZE,
+    DEFAULT_INGESTION_COLLECTION_NAME,
+    DEFAULT_INGESTION_EMBED_MODEL_NAME,
+    DEFAULT_INGESTION_NEWS_SOURCE_DIR_NAMES,
+    DEFAULT_INGESTION_OBSERVABILITY_CONFIG,
+    IngestionPaths,
+    IngestionObservabilityConfig,
+    IngestionRunConfig,
+    build_ingestion_trace_attributes,
+    default_ingestion_news_dirs,
+    default_ingestion_paths,
+    default_ingestion_run_config,
+)
 from .ingestion_observability import (
     IngestionDocumentMetric,
     IngestionPhoenixObserver,
@@ -60,6 +75,19 @@ __all__ = [
     "default_news_dirs",
     "default_paths",
     "HuggingFaceChatLLM",
+    "DEFAULT_INGESTION_CHUNK_OVERLAP",
+    "DEFAULT_INGESTION_CHUNK_SIZE",
+    "DEFAULT_INGESTION_COLLECTION_NAME",
+    "DEFAULT_INGESTION_EMBED_MODEL_NAME",
+    "DEFAULT_INGESTION_NEWS_SOURCE_DIR_NAMES",
+    "DEFAULT_INGESTION_OBSERVABILITY_CONFIG",
+    "IngestionPaths",
+    "IngestionObservabilityConfig",
+    "IngestionRunConfig",
+    "build_ingestion_trace_attributes",
+    "default_ingestion_news_dirs",
+    "default_ingestion_paths",
+    "default_ingestion_run_config",
     "IngestionDocumentMetric",
     "IngestionPhoenixObserver",
     "current_ram_usage_mb",
