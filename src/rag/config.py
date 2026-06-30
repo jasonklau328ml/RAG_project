@@ -2,8 +2,20 @@ from dataclasses import dataclass
 from pathlib import Path
 
 
-DEFAULT_COLLECTION_NAME = "news_chat"
+# DEFAULT_COLLECTION_NAME = "news_chat_multilingual_e5_base"
+DEFAULT_COLLECTION_NAME = "test_collection_name"
+# DEFAULT_EMBED_MODEL_NAME = "intfloat/multilingual-e5-base"
 DEFAULT_EMBED_MODEL_NAME = "BAAI/bge-small-en-v1.5"
+E5_QUERY_INSTRUCTION = "query: "
+E5_TEXT_INSTRUCTION = "passage: "
+# DEFAULT_NEWS_SOURCE_DIR_NAMES = (
+#     "hk_free_press_news",
+#     "hk01_news",
+#     "the_standard_news",
+# )
+DEFAULT_NEWS_SOURCE_DIR_NAMES = (
+    "hk_free_press_news",
+)
 DEFAULT_OLLAMA_MODEL = "gemma3:1b"
 DEFAULT_LLM_PROVIDER = "ollama" # ollama or huggingface
 LLM_PROVIDER_OLLAMA = "ollama"
@@ -29,14 +41,22 @@ Use the current chat history to understand follow-up questions, but do not inven
 class RagPaths:
     project_root: Path
     news_dir: Path
+    news_dirs: tuple[Path, ...]
     chroma_dir: Path
     session_dir: Path
 
 
+def default_news_dirs(project_root: Path) -> tuple[Path, ...]:
+    return tuple(project_root / "data" / dir_name for dir_name in DEFAULT_NEWS_SOURCE_DIR_NAMES)
+
+
 def default_paths(project_root: Path) -> RagPaths:
+    news_dirs = default_news_dirs(project_root)
     return RagPaths(
         project_root=project_root,
-        news_dir=project_root / "data" / "hk_free_press_news",
+        # Keep news_dir for backward compatibility in notebooks/scripts that still use one folder.
+        news_dir=news_dirs[0],
+        news_dirs=news_dirs,
         chroma_dir=project_root / "chromadb_store",
         session_dir=project_root / "session",
     )

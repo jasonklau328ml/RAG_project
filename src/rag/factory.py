@@ -1,9 +1,9 @@
 import os
+from collections.abc import Iterable
 from pathlib import Path
 from typing import Literal
 
 from llama_index.core import Settings
-from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 from llama_index.llms.ollama import Ollama
 
 from .chatbot import RagNewsChatbot
@@ -20,12 +20,23 @@ from .config import (
     LLM_PROVIDER_HUGGINGFACE,
     LLM_PROVIDER_OLLAMA,
 )
+from .embeddings import create_embedding_model
 from .huggingface_llm import HuggingFaceChatLLM
 from .knowledge_base import ChromaKnowledgeBase
 from .session_store import JsonChatSessionStore
 
 
 LlmProvider = Literal["ollama", "huggingface"]
+
+
+def _normalize_news_dirs(news_dir: Path | Iterable[Path]) -> list[Path]:
+    if isinstance(news_dir, Path):
+        return [news_dir]
+
+    normalized = [Path(path) for path in news_dir]
+    if not normalized:
+        raise ValueError("At least one news source directory must be provided.")
+    return normalized
 
 
 def _load_huggingface_api_key() -> str:
@@ -76,7 +87,7 @@ def create_llm(
 
 
 def configure_llama_index(
-    news_dir: Path,
+    news_dir: Path | Iterable[Path],
     embed_model_name: str = DEFAULT_EMBED_MODEL_NAME,
     llm_provider: LlmProvider = DEFAULT_LLM_PROVIDER,
     ollama_model: str = DEFAULT_OLLAMA_MODEL,
@@ -84,10 +95,13 @@ def configure_llama_index(
     huggingface_provider: str = "auto",
     huggingface_api_key: str | None = None,
 ) -> str:
-    if not news_dir.exists():
-        raise FileNotFoundError(f"News folder not found: {news_dir}")
+    news_dirs = _normalize_news_dirs(news_dir)
+    missing_news_dirs = [path for path in news_dirs if not path.exists()]
+    if missing_news_dirs:
+        missing_list = ", ".join(str(path) for path in missing_news_dirs)
+        raise FileNotFoundError(f"News folder(s) not found: {missing_list}")
 
-    Settings.embed_model = HuggingFaceEmbedding(model_name=embed_model_name)
+    Settings.embed_model = create_embedding_model(embed_model_name)
     Settings.llm, resolved_llm_model = create_llm(
         llm_provider=llm_provider,
         ollama_model=ollama_model,
@@ -102,7 +116,7 @@ def create_rag_app(
     *,
     chroma_dir: Path,
     session_dir: Path,
-    news_dir: Path,
+    news_dir: Path | Iterable[Path],
     collection_name: str = DEFAULT_COLLECTION_NAME,
     embed_model_name: str = DEFAULT_EMBED_MODEL_NAME,
     llm_provider: LlmProvider = DEFAULT_LLM_PROVIDER,
