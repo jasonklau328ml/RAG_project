@@ -3,14 +3,21 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-DEFAULT_INGESTION_COLLECTION_NAME = "news_chat_multilingual_e5_base"
-DEFAULT_INGESTION_EMBED_MODEL_NAME = "intfloat/multilingual-e5-base"
+# DEFAULT_INGESTION_COLLECTION_NAME = "news_chat_multilingual_e5_base"
+DEFAULT_INGESTION_COLLECTION_NAME = "run_testing"
+# DEFAULT_INGESTION_EMBED_MODEL_NAME = "intfloat/multilingual-e5-base"
+DEFAULT_INGESTION_EMBED_MODEL_NAME = "BAAI/bge-small-en-v1.5"
 DEFAULT_INGESTION_CHUNK_SIZE = 800
 DEFAULT_INGESTION_CHUNK_OVERLAP = 120
+# DEFAULT_INGESTION_NEWS_SOURCE_DIR_NAMES = (
+#     "hk_free_press_news",
+#     "hk01_news",
+#     "the_standard_news",
+# )
 DEFAULT_INGESTION_NEWS_SOURCE_DIR_NAMES = (
     "hk_free_press_news",
-    "hk01_news",
-    "the_standard_news",
+    # "hk01_news",
+    # "the_standard_news",
 )
 
 @dataclass(frozen=True)
