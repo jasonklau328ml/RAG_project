@@ -8,20 +8,22 @@ from typing import Any
 import chainlit as cl
 from llama_index.core.llms import ChatMessage
 
-from src.rag import (
+from src.rag.core import (
+    DEFAULT_PHOENIX_ENDPOINT,
+    DEFAULT_PHOENIX_PROJECT_NAME,
+    setup_phoenix_observability,
+    trace_rag_chat_turn,
+    trace_chat_session,
+)
+from src.rag.retrieval import (
     DEFAULT_CHAT_SYSTEM_PROMPT,
     DEFAULT_COLLECTION_NAME,
     DEFAULT_EMBED_MODEL_NAME,
     DEFAULT_MEMORY_TOKEN_LIMIT,
     DEFAULT_OLLAMA_MODEL,
     DEFAULT_TOP_K as DEFAULT_TOP_K_VALUE,
-    DEFAULT_PHOENIX_ENDPOINT,
-    DEFAULT_PHOENIX_PROJECT_NAME,
     RagNewsChatbot,
     create_rag_app,
-    setup_phoenix_observability,
-    trace_rag_chat_turn,
-    trace_chat_session,
 )
 
 
