@@ -26,7 +26,6 @@ from src.rag import (
 
 
 PROJECT_ROOT = Path(__file__).resolve().parent
-NEWS_DIR = PROJECT_ROOT / "data" / "hk_free_press_news"
 CHROMA_DIR = PROJECT_ROOT / "chromadb_store"
 SESSION_DIR = PROJECT_ROOT / "session"
 
@@ -61,7 +60,6 @@ def get_rag_app() -> RagNewsChatbot:
         _rag_app = create_rag_app(
             chroma_dir=CHROMA_DIR,
             session_dir=SESSION_DIR,
-            news_dir=NEWS_DIR,
             collection_name=COLLECTION_NAME,
             embed_model_name=EMBED_MODEL_NAME,
             ollama_model=OLLAMA_MODEL,

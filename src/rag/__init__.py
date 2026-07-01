@@ -1,12 +1,11 @@
-from .chatbot import RagNewsChatbot, print_sources, print_response
-from .config import (
+from .retrieval.chatbot import RagNewsChatbot, print_sources, print_response
+from .retrieval.config import (
     DEFAULT_CHAT_SYSTEM_PROMPT,
     DEFAULT_COLLECTION_NAME,
     DEFAULT_EMBED_MODEL_NAME,
     DEFAULT_HUGGINGFACE_MODEL_KEY,
     DEFAULT_LLM_PROVIDER,
     DEFAULT_MEMORY_TOKEN_LIMIT,
-    DEFAULT_NEWS_SOURCE_DIR_NAMES,
     DEFAULT_OLLAMA_MODEL,
     DEFAULT_TOP_K,
     E5_QUERY_INSTRUCTION,
@@ -15,13 +14,12 @@ from .config import (
     LLM_PROVIDER_HUGGINGFACE,
     LLM_PROVIDER_OLLAMA,
     RagPaths,
-    default_news_dirs,
     default_paths,
 )
-from .embeddings import create_embedding_model
-from .factory import configure_llama_index, create_llm, create_rag_app, resolve_huggingface_model
-from .huggingface_llm import HuggingFaceChatLLM
-from .ingestion_config import (
+from .core.embeddings import create_embedding_model
+from .retrieval.factory import configure_llama_index, create_llm, create_rag_app, resolve_huggingface_model
+from .retrieval.huggingface_llm import HuggingFaceChatLLM
+from .insertion.ingestion_config import (
     DEFAULT_INGESTION_CHUNK_OVERLAP,
     DEFAULT_INGESTION_CHUNK_SIZE,
     DEFAULT_INGESTION_COLLECTION_NAME,
@@ -36,14 +34,14 @@ from .ingestion_config import (
     default_ingestion_paths,
     default_ingestion_run_config,
 )
-from .ingestion_observability import (
+from .insertion.ingestion_observability import (
     IngestionDocumentMetric,
     IngestionPhoenixObserver,
     current_ram_usage_mb,
     estimate_token_count,
 )
-from .knowledge_base import ChromaKnowledgeBase
-from .observability import (
+from .retrieval.knowledge_base import ChromaKnowledgeBase
+from .core.observability import (
     DEFAULT_PHOENIX_ENDPOINT,
     DEFAULT_PHOENIX_PROJECT_NAME,
     PHOENIX_INSTALL_COMMAND,
@@ -54,8 +52,8 @@ from .observability import (
     trace_chat_session,
 )
 from .retrieval import HybridRetriever, reciprocal_rank_fusion
-from .session_store import JsonChatSessionStore
-from .vector_store_admin import ChromaCollectionSummary, ChromaVectorStoreAdmin
+from .retrieval.session_store import JsonChatSessionStore
+from .insertion.vector_store_admin import ChromaCollectionSummary, ChromaVectorStoreAdmin
 
 __all__ = [
     "DEFAULT_CHAT_SYSTEM_PROMPT",
@@ -64,7 +62,6 @@ __all__ = [
     "DEFAULT_HUGGINGFACE_MODEL_KEY",
     "DEFAULT_LLM_PROVIDER",
     "DEFAULT_MEMORY_TOKEN_LIMIT",
-    "DEFAULT_NEWS_SOURCE_DIR_NAMES",
     "DEFAULT_OLLAMA_MODEL",
     "DEFAULT_TOP_K",
     "E5_QUERY_INSTRUCTION",
@@ -73,7 +70,6 @@ __all__ = [
     "LLM_PROVIDER_HUGGINGFACE",
     "LLM_PROVIDER_OLLAMA",
     "RagPaths",
-    "default_news_dirs",
     "default_paths",
     "HuggingFaceChatLLM",
     "DEFAULT_INGESTION_CHUNK_OVERLAP",
