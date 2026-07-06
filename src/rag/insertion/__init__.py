@@ -18,6 +18,8 @@ from .ingestion_observability import (
     IngestionPhoenixObserver,
     current_ram_usage_mb,
     estimate_token_count,
+    setup_ingestion_observability,
+    upsert_phoenix_project_description,
 )
 from .pipeline import (
     IngestionVectorIndexer,
@@ -30,7 +32,6 @@ from .pipeline import (
     preview_news_documents,
     read_text_file,
     sanitize_chroma_metadata,
-    upsert_phoenix_project_description,
 )
 from .vector_store_admin import ChromaCollectionSummary, ChromaVectorStoreAdmin
 
@@ -52,6 +53,8 @@ __all__ = [
     "IngestionPhoenixObserver",
     "current_ram_usage_mb",
     "estimate_token_count",
+    "setup_ingestion_observability",
+    "upsert_phoenix_project_description",
     "IngestionVectorIndexer",
     "build_text_nodes",
     "get_chroma_collection",
@@ -62,7 +65,6 @@ __all__ = [
     "preview_news_documents",
     "read_text_file",
     "sanitize_chroma_metadata",
-    "upsert_phoenix_project_description",
     "ChromaCollectionSummary",
     "ChromaVectorStoreAdmin",
 ]

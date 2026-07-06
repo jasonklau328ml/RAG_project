@@ -16,23 +16,6 @@ from llama_index.vector_stores.chroma import ChromaVectorStore
 from tqdm.auto import tqdm
 
 
-def upsert_phoenix_project_description(base_url: str, project_name: str, description: str) -> None:
-    """Create or update a Phoenix project description for better UI context."""
-    try:
-        from phoenix.client import Client
-    except (ImportError, ModuleNotFoundError):
-        print("Phoenix client package not available; skip project description sync.")
-        return
-
-    client = Client(base_url=base_url)
-    try:
-        client.projects.update(project_name=project_name, description=description)
-        print(f"Phoenix project description updated: {project_name}")
-    except Exception:
-        client.projects.create(name=project_name, description=description)
-        print(f"Phoenix project created with description: {project_name}")
-
-
 def list_text_files(news_dirs: Iterable[Path]) -> list[Path]:
     """Return all text news files under all configured source folders."""
     text_files: list[Path] = []
