@@ -23,9 +23,9 @@ def setup_phoenix_observability(
     batch: bool = False,
     raise_on_missing: bool = True,
 ) -> PhoenixObservabilityStatus:
-    """Configure Phoenix for retrieval-facing programs (notebook + Chainlit app).
+    """Configure Phoenix for inference-facing programs (notebook + Chainlit app).
 
-    This wrapper keeps retrieval code decoupled from core internals while reusing the
+    This wrapper keeps inference code decoupled from core internals while reusing the
     shared Phoenix bootstrap implementation.
     """
     return _setup_core_phoenix_observability(
@@ -45,9 +45,9 @@ def trace_chat_session(
     user_id: str | None = None,
     metadata: dict[str, Any] | None = None,
 ):
-    """Attach chat-level session metadata for retrieval traces.
+    """Attach chat-level session metadata for inference traces.
 
-    Keeping this wrapper in retrieval makes notebook/app imports explicit and stable
+    Keeping this wrapper in inference makes notebook/app imports explicit and stable
     while delegating the actual OpenInference context propagation to core.
     """
     return _trace_core_chat_session(
@@ -66,7 +66,7 @@ def trace_rag_chat_turn(
     llm_model: str,
     message: str,
 ):
-    """Create one parent span for a retrieval/app chat turn.
+    """Create one parent span for an inference/app chat turn.
 
     The parent span groups child LlamaIndex spans under one turn, making Phoenix
     timelines easier to inspect for each user message.

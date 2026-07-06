@@ -19,7 +19,7 @@ from .config import (
 from .factory import configure_llama_index, create_llm, create_rag_app, resolve_huggingface_model
 from .huggingface_llm import HuggingFaceChatLLM
 from .knowledge_base import ChromaKnowledgeBase
-from .retrieval_observability import (
+from .inference_observability import (
     DEFAULT_PHOENIX_ENDPOINT,
     DEFAULT_PHOENIX_PROJECT_NAME,
     PHOENIX_INSTALL_COMMAND,

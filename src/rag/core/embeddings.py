@@ -8,10 +8,10 @@ E5_TEXT_INSTRUCTION = "passage: "
 
 
 def create_embedding_model(model_name: str = DEFAULT_EMBED_MODEL_NAME) -> HuggingFaceEmbedding:
-    """Create the embedding model used by both ingestion and retrieval.
+    """Create the embedding model used by both ingestion and inference.
 
     E5 models are trained with different prefixes for user queries and stored passages.
-    Keeping this setup in one function prevents the insertion notebook and retrieval app
+    Keeping this setup in one function prevents the ingestion notebook and inference app
     from accidentally embedding text in incompatible ways.
     """
     if "e5" in model_name.lower():
