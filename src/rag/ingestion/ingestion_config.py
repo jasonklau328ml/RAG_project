@@ -22,7 +22,7 @@ DEFAULT_INGESTION_NEWS_SOURCE_DIR_NAMES = (
 
 @dataclass(frozen=True)
 class IngestionPaths:
-    """Filesystem paths used by the insertion notebook and ingestion scripts."""
+    """Filesystem paths used by the ingestion notebook and ingestion scripts."""
 
     project_root: Path
     news_dirs: tuple[Path, ...]
@@ -31,10 +31,10 @@ class IngestionPaths:
 
 @dataclass(frozen=True)
 class IngestionRunConfig:
-    """Stable insertion settings shared by notebooks and scripts.
+    """Stable ingestion settings shared by notebooks and scripts.
 
-    This intentionally duplicates some retrieval config values so insertion.ipynb can be
-    understood and changed without mentally jumping into retrieval-specific defaults.
+    This intentionally duplicates some inference config values so ingestion.ipynb can be
+    understood and changed without mentally jumping into inference-specific defaults.
     """
 
     project_root: Path
@@ -68,12 +68,12 @@ DEFAULT_INGESTION_OBSERVABILITY_CONFIG = IngestionObservabilityConfig()
 
 
 def default_ingestion_news_dirs(project_root: Path) -> tuple[Path, ...]:
-    """Return the text news folders used by the insertion pipeline."""
+    """Return the text news folders used by the ingestion pipeline."""
     return tuple(project_root / "data" / dir_name for dir_name in DEFAULT_INGESTION_NEWS_SOURCE_DIR_NAMES)
 
 
 def default_ingestion_paths(project_root: Path) -> IngestionPaths:
-    """Build insertion paths from the current project root."""
+    """Build ingestion paths from the current project root."""
     return IngestionPaths(
         project_root=project_root,
         news_dirs=default_ingestion_news_dirs(project_root),
@@ -82,7 +82,7 @@ def default_ingestion_paths(project_root: Path) -> IngestionPaths:
 
 
 def default_ingestion_run_config(project_root: Path) -> IngestionRunConfig:
-    """Build the complete insertion config object consumed by insertion.ipynb."""
+    """Build the complete ingestion config object consumed by ingestion.ipynb."""
     return IngestionRunConfig(
         project_root=project_root,
         paths=default_ingestion_paths(project_root),
