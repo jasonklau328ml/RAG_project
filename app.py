@@ -8,13 +8,6 @@ from typing import Any
 import chainlit as cl
 from llama_index.core.llms import ChatMessage
 
-from src.rag.core import (
-    DEFAULT_PHOENIX_ENDPOINT,
-    DEFAULT_PHOENIX_PROJECT_NAME,
-    setup_phoenix_observability,
-    trace_rag_chat_turn,
-    trace_chat_session,
-)
 from src.rag.retrieval import (
     DEFAULT_CHAT_SYSTEM_PROMPT,
     DEFAULT_COLLECTION_NAME,
@@ -24,6 +17,13 @@ from src.rag.retrieval import (
     DEFAULT_TOP_K as DEFAULT_TOP_K_VALUE,
     RagNewsChatbot,
     create_rag_app,
+)
+from src.rag.retrieval.retrieval_observability import (
+    DEFAULT_PHOENIX_ENDPOINT,
+    DEFAULT_PHOENIX_PROJECT_NAME,
+    setup_phoenix_observability,
+    trace_rag_chat_turn,
+    trace_chat_session,
 )
 
 

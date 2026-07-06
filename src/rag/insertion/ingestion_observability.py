@@ -39,6 +39,57 @@ def current_ram_usage_mb() -> float:
     return psutil.Process().memory_info().rss / (1024 * 1024)
 
 
+def setup_ingestion_observability(
+    *,
+    project_name: str,
+    endpoint: str,
+    enabled: bool = True,
+    launch_server: bool = False,
+    auto_instrument: bool = False,
+    batch: bool = True,
+    raise_on_missing: bool = False,
+):
+    """Configure Phoenix tracing for ingestion runs.
+
+    Ingestion defaults to batched exporting because ingestion writes many spans and
+    benefits from lower tracing overhead compared to per-span synchronous export.
+    """
+    from ..core.observability import setup_phoenix_observability
+
+    return setup_phoenix_observability(
+        project_name=project_name,
+        endpoint=endpoint,
+        enabled=enabled,
+        launch_server=launch_server,
+        auto_instrument=auto_instrument,
+        batch=batch,
+        raise_on_missing=raise_on_missing,
+    )
+
+
+def upsert_phoenix_project_description(base_url: str, project_name: str, description: str) -> None:
+    """Create or update Phoenix project description for ingestion observability.
+
+    The ingestion notebook uses this to keep project context visible in Phoenix UI,
+    making ingestion runs easier to audit by project intent and dataset purpose.
+    """
+    try:
+        from phoenix.client import Client
+    except (ImportError, ModuleNotFoundError):
+        print("Phoenix client package not available; skip project description sync.")
+        return
+
+    client = Client(base_url=base_url)
+    try:
+        # Update when project already exists.
+        client.projects.update(project_name=project_name, description=description)
+        print(f"Phoenix project description updated: {project_name}")
+    except Exception:
+        # Create when project does not exist yet.
+        client.projects.create(name=project_name, description=description)
+        print(f"Phoenix project created with description: {project_name}")
+
+
 @dataclass
 class IngestionDocumentMetric:
     """Dataset-friendly per-document metrics captured during ingestion."""
