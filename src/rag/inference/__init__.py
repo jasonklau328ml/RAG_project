@@ -1,5 +1,5 @@
 from .chatbot import RagNewsChatbot, print_response, print_sources
-from .config import (
+from .inference_config import (
     DEFAULT_CHAT_SYSTEM_PROMPT,
     DEFAULT_COLLECTION_NAME,
     DEFAULT_EMBED_MODEL_NAME,

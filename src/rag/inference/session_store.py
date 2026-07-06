@@ -9,7 +9,7 @@ from typing import Any
 from llama_index.core.llms import ChatMessage, MessageRole
 from llama_index.core.memory import ChatMemoryBuffer
 
-from .config import DEFAULT_COLLECTION_NAME, DEFAULT_EMBED_MODEL_NAME, DEFAULT_LLM_PROVIDER, DEFAULT_OLLAMA_MODEL
+from .inference_config import DEFAULT_COLLECTION_NAME, DEFAULT_EMBED_MODEL_NAME, DEFAULT_LLM_PROVIDER, DEFAULT_OLLAMA_MODEL
 
 
 class JsonChatSessionStore:

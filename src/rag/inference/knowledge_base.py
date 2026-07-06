@@ -6,7 +6,7 @@ from llama_index.core.schema import TextNode
 from llama_index.retrievers.bm25 import BM25Retriever
 from llama_index.vector_stores.chroma import ChromaVectorStore
 
-from .config import DEFAULT_TOP_K
+from .inference_config import DEFAULT_TOP_K
 from .retrievers import HybridRetriever
 
 
