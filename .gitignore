@@ -1,6 +1,9 @@
 # Ignore __pycache__ folder in src
 src/__pycache__/
 src/utils_private.py
+notebook/connect_chromadb.ipynb
+notebook/connect_weaviate.ipynb
+notebook/hugging_face.ipynb
 chromadb_store/
 books/
 data/
