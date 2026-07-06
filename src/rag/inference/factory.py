@@ -6,7 +6,7 @@ from llama_index.core import Settings
 from llama_index.llms.ollama import Ollama
 
 from .chatbot import RagNewsChatbot
-from .config import (
+from .inference_config import (
     DEFAULT_CHAT_SYSTEM_PROMPT,
     DEFAULT_COLLECTION_NAME,
     DEFAULT_EMBED_MODEL_NAME,

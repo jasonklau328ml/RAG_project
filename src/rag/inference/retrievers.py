@@ -5,7 +5,7 @@ from llama_index.core.retrievers import BaseRetriever
 from llama_index.core.schema import NodeWithScore
 from llama_index.retrievers.bm25 import BM25Retriever
 
-from .config import DEFAULT_TOP_K
+from .inference_config import DEFAULT_TOP_K
 
 
 def reciprocal_rank_fusion(

@@ -6,7 +6,7 @@ from llama_index.core.llms import ChatMessage
 from llama_index.core.memory import ChatMemoryBuffer
 from llama_index.core.query_engine import RetrieverQueryEngine
 
-from .config import DEFAULT_CHAT_SYSTEM_PROMPT, DEFAULT_MEMORY_TOKEN_LIMIT, DEFAULT_TOP_K
+from .inference_config import DEFAULT_CHAT_SYSTEM_PROMPT, DEFAULT_MEMORY_TOKEN_LIMIT, DEFAULT_TOP_K
 from .knowledge_base import ChromaKnowledgeBase
 from .session_store import JsonChatSessionStore
 
