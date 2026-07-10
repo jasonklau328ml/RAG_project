@@ -1,6 +1,8 @@
 # Ignore __pycache__ folder in src
 src/__pycache__/
 src/utils_private.py
+
+documents/
 chromadb_store/
 books/
 data/
