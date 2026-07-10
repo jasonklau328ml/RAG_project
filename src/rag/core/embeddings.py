@@ -10,6 +10,14 @@ E5_TEXT_INSTRUCTION = "passage: "
 def create_embedding_model(model_name: str = DEFAULT_EMBED_MODEL_NAME) -> HuggingFaceEmbedding:
     """Create the embedding model used by both ingestion and inference.
 
+        Purpose:
+        - Turn text into numeric vectors so semantic search can compare meaning.
+        - Apply model-specific instructions for E5 models, because those models expect different
+            prefixes for user queries and stored document passages.
+
+        Output:
+        - Returns a configured ``HuggingFaceEmbedding`` object.
+
     E5 models are trained with different prefixes for user queries and stored passages.
     Keeping this setup in one function prevents the ingestion notebook and inference app
     from accidentally embedding text in incompatible ways.

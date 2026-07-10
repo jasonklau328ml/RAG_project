@@ -27,11 +27,25 @@ class HuggingFaceChatLLM(CustomLLM):
     _client: InferenceClient = PrivateAttr()
 
     def __init__(self, **data: Any):
+        """Create the Hugging Face client wrapper used by LlamaIndex.
+
+        Output:
+        - Initializes the model configuration and the underlying ``InferenceClient``.
+        """
         super().__init__(**data)
         self._client = InferenceClient(api_key=self.api_key, provider=self.provider)
 
     @property
     def metadata(self) -> LLMMetadata:
+        """Describe this model to LlamaIndex.
+
+        Purpose:
+        - LlamaIndex uses this metadata to understand context length, output length, and whether
+          the model behaves like a chat model.
+
+        Output:
+        - Returns an ``LLMMetadata`` object.
+        """
         return LLMMetadata(
             context_window=self.context_window,
             num_output=self.max_tokens,
@@ -41,12 +55,22 @@ class HuggingFaceChatLLM(CustomLLM):
         )
 
     def _message_to_dict(self, message: ChatMessage) -> dict[str, str]:
+        """Convert a LlamaIndex message into the JSON format expected by Hugging Face.
+
+        Output:
+        - Returns a dictionary with ``role`` and ``content`` keys.
+        """
         role = message.role.value if hasattr(message.role, "value") else str(message.role)
         if role not in {"system", "user", "assistant"}:
             role = "user"
         return {"role": role, "content": message.content or ""}
 
     def _extract_message_content(self, completion: Any) -> str:
+        """Extract plain assistant text from a Hugging Face completion payload.
+
+        Output:
+        - Returns the assistant text as a string.
+        """
         choice = completion.choices[0]
         message = choice.message
         if isinstance(message, dict):
@@ -54,6 +78,15 @@ class HuggingFaceChatLLM(CustomLLM):
         return getattr(message, "content", "") or ""
 
     def chat(self, messages: Sequence[ChatMessage], **kwargs: Any) -> ChatResponse:
+        """Run a multi-message chat completion request.
+
+        Purpose:
+        - Send the full conversation history that LlamaIndex provides.
+        - Return the assistant's reply in the response shape LlamaIndex expects.
+
+        Output:
+        - Returns a ``ChatResponse`` object.
+        """
         # Keep LlamaIndex chat memory intact by sending the full engine-supplied message list.
         completion = self._client.chat.completions.create(
             model=self.model,
@@ -67,6 +100,11 @@ class HuggingFaceChatLLM(CustomLLM):
         )
 
     def complete(self, prompt: str, formatted: bool = False, **kwargs: Any) -> CompletionResponse:
+        """Run a one-shot text completion using the chat-completions API under the hood.
+
+        Output:
+        - Returns a ``CompletionResponse`` object containing the assistant text.
+        """
         completion = self._client.chat.completions.create(
             model=self.model,
             messages=[{"role": "user", "content": prompt}],
@@ -76,6 +114,15 @@ class HuggingFaceChatLLM(CustomLLM):
         return CompletionResponse(text=self._extract_message_content(completion), raw=completion)
 
     def stream_complete(self, prompt: str, formatted: bool = False, **kwargs: Any) -> CompletionResponseGen:
+        """Provide the streaming method required by ``CustomLLM``.
+
+        Purpose:
+        - This project does not yet implement token-by-token streaming, so this method yields
+          one final completion result.
+
+        Output:
+        - Returns a generator that yields one ``CompletionResponse``.
+        """
         # The app currently uses non-streaming calls; yield one response to satisfy CustomLLM.
         def response_generator() -> Generator[CompletionResponse, None, None]:
             yield self.complete(prompt, formatted=formatted, **kwargs)

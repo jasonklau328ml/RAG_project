@@ -23,6 +23,16 @@ class JsonChatSessionStore:
         llm_provider: str = DEFAULT_LLM_PROVIDER,
         llm_model: str = DEFAULT_OLLAMA_MODEL,
     ):
+        """Create the file-backed chat store used to persist conversations.
+
+        Purpose:
+        - Remember where JSON chat files should live.
+        - Store metadata about the collection, embedding model, and LLM so each saved chat file
+          records the environment that created it.
+
+        Output:
+        - Initializes the store and ensures the session directory exists.
+        """
         self.session_dir = session_dir
         self.collection_name = collection_name
         self.embed_model_name = embed_model_name
@@ -31,16 +41,36 @@ class JsonChatSessionStore:
         self.session_dir.mkdir(parents=True, exist_ok=True)
 
     def safe_name(self, chat_id: str) -> str:
+        """Convert a free-form chat id into a file-system-safe name.
+
+        Output:
+        - Returns a sanitized string safe for use in a JSON filename.
+        """
         safe_name = re.sub(r"[^A-Za-z0-9_.-]+", "_", chat_id.strip()).strip("_")
         return safe_name or "default_chat"
 
     def path_for(self, chat_id: str) -> Path:
+        """Build the JSON file path for one chat id.
+
+        Output:
+        - Returns a ``Path`` pointing to the chat's JSON file.
+        """
         return self.session_dir / f"{self.safe_name(chat_id)}.json"
 
     def display_name_for(self, session_path: Path) -> str:
+        """Create a friendlier label from a session file path.
+
+        Output:
+        - Returns the file stem with underscores changed to spaces.
+        """
         return session_path.stem.replace("_", " ")
 
     def message_to_dict(self, message: ChatMessage) -> dict[str, Any]:
+        """Convert a LlamaIndex chat message into plain JSON-safe data.
+
+        Output:
+        - Returns a serializable dictionary.
+        """
         role = message.role.value if hasattr(message.role, "value") else str(message.role)
         return {
             "role": role,
@@ -49,6 +79,11 @@ class JsonChatSessionStore:
         }
 
     def message_from_dict(self, data: dict[str, Any]) -> ChatMessage:
+        """Rebuild a LlamaIndex ``ChatMessage`` from JSON data.
+
+        Output:
+        - Returns a ``ChatMessage`` instance.
+        """
         role_text = data.get("role", "user")
         try:
             role = MessageRole(role_text)
@@ -62,12 +97,25 @@ class JsonChatSessionStore:
         )
 
     def memory_from_payload(self, payload: dict[str, Any], token_limit: int) -> ChatMemoryBuffer:
+        """Rebuild a chat memory buffer from a saved JSON payload.
+
+        Purpose:
+        - Restore prior user and assistant messages so a chat can continue from disk.
+
+        Output:
+        - Returns a populated ``ChatMemoryBuffer``.
+        """
         memory = ChatMemoryBuffer.from_defaults(token_limit=token_limit)
         for message_data in payload.get("messages", []):
             memory.put(self.message_from_dict(message_data))
         return memory
 
     def payload_from_memory(self, chat_id: str, memory: ChatMemoryBuffer) -> dict[str, Any]:
+        """Convert an in-memory chat buffer into the JSON structure saved on disk.
+
+        Output:
+        - Returns a dictionary ready for ``json.dumps``.
+        """
         return {
             "schema_version": 1,
             "chat_id": chat_id,
@@ -80,6 +128,15 @@ class JsonChatSessionStore:
         }
 
     def save(self, chat_id: str, memory: ChatMemoryBuffer) -> Path:
+        """Persist one chat's memory buffer to its JSON file.
+
+        Purpose:
+        - Write through a temporary file first, then replace the real file, so partial writes are
+          less likely if the process stops mid-save.
+
+        Output:
+        - Returns the ``Path`` of the final session file.
+        """
         session_path = self.path_for(chat_id)
         temp_path = session_path.with_suffix(".tmp")
         payload = self.payload_from_memory(chat_id, memory)
@@ -89,18 +146,39 @@ class JsonChatSessionStore:
         return session_path
 
     def load(self, chat_id: str) -> dict[str, Any]:
+        """Load one saved chat payload from disk.
+
+        Output:
+        - Returns the decoded JSON payload as a dictionary.
+        - Raises ``FileNotFoundError`` if the chat file does not exist.
+        """
         session_path = self.path_for(chat_id)
         if not session_path.exists():
             raise FileNotFoundError(f"Saved chat session not found: {session_path}")
         return json.loads(session_path.read_text(encoding="utf-8"))
 
     def exists(self, chat_id: str) -> bool:
+        """Check whether a saved JSON file already exists for a chat id.
+
+        Output:
+        - Returns ``True`` if the file exists, otherwise ``False``.
+        """
         return self.path_for(chat_id).exists()
 
     def list(self) -> list[Path]:
+        """List saved chat files, newest first.
+
+        Output:
+        - Returns a list of ``Path`` objects.
+        """
         return sorted(self.session_dir.glob("*.json"), key=lambda path: path.stat().st_mtime, reverse=True)
 
     def list_chat_ids(self) -> list[str]:
+        """Read every saved session file and return the chat ids they represent.
+
+        Output:
+        - Returns a list of chat id strings.
+        """
         chat_ids: list[str] = []
         for session_path in self.list():
             try:
@@ -117,9 +195,20 @@ class JsonChatSessionStore:
         return chat_ids
 
     def count_chat_ids(self) -> int:
+        """Count the number of saved chat files.
+
+        Output:
+        - Returns the number of saved chats as an integer.
+        """
         return len(self.list())
 
     def delete_chat(self, chat_id: str, *, missing_ok: bool = False) -> bool:
+        """Delete one saved chat file.
+
+        Output:
+        - Returns ``True`` when deletion succeeds.
+        - Returns ``False`` only when ``missing_ok=True`` and the file was absent.
+        """
         session_path = self.path_for(chat_id)
         if not session_path.exists():
             if missing_ok:
@@ -130,6 +219,11 @@ class JsonChatSessionStore:
         return True
 
     def rename_chat(self, old_chat_id: str, new_chat_id: str, *, overwrite: bool = False) -> Path:
+        """Rename a saved chat file and update the chat id stored inside it.
+
+        Output:
+        - Returns the ``Path`` of the renamed chat file.
+        """
         old_path = self.path_for(old_chat_id)
         if not old_path.exists():
             raise FileNotFoundError(f"Saved chat session not found: {old_path}")
