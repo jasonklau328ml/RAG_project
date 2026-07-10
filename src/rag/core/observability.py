@@ -33,6 +33,11 @@ class PhoenixObservabilityStatus:
 
 
 def _dependency_error(error: ImportError | ModuleNotFoundError) -> RuntimeError:
+    """Turn a missing-package import error into a clearer Phoenix setup error.
+
+    Output:
+    - Returns a ``RuntimeError`` explaining which install command the user should run.
+    """
     dependency_error = RuntimeError(
         "Phoenix observability dependencies are not installed. "
         f"Install them in the active Python environment with: {PHOENIX_INSTALL_COMMAND}"
@@ -42,6 +47,15 @@ def _dependency_error(error: ImportError | ModuleNotFoundError) -> RuntimeError:
 
 
 def _call_register(*, project_name: str, endpoint: str, auto_instrument: bool, batch: bool):
+    """Call Phoenix's register function while tolerating older Phoenix versions.
+
+    Purpose:
+    - Newer Phoenix versions accept more keyword arguments than older ones.
+    - This compatibility shim keeps tracing setup working across slightly different installs.
+
+    Output:
+    - Returns the tracer provider created by Phoenix.
+    """
     try:
         from phoenix.otel import register
     except (ImportError, ModuleNotFoundError) as error:
@@ -61,6 +75,11 @@ def _call_register(*, project_name: str, endpoint: str, auto_instrument: bool, b
 
 
 def _normalize_collector_endpoint(endpoint: str) -> str:
+    """Convert a Phoenix base URL into the OTLP traces endpoint when needed.
+
+    Output:
+    - Returns the normalized collector URL string.
+    """
     parsed = urlparse(endpoint)
     if parsed.scheme in {"http", "https"} and parsed.path in {"", "/"}:
         # OTLP/HTTP trace exporter expects the traces route; local Phoenix UI URL alone causes 405.
@@ -69,7 +88,14 @@ def _normalize_collector_endpoint(endpoint: str) -> str:
 
 
 def start_phoenix_server(host: str = "127.0.0.1", port: int = 6006) -> str:
-    """Start the local Phoenix UI server and return the browser URL."""
+    """Start the local Phoenix UI server and return the browser URL.
+
+    Purpose:
+    - Launch a local Phoenix web app from Python when the user wants the notebook or app to do it.
+
+    Output:
+    - Returns the Phoenix UI URL as a string.
+    """
     global _PHOENIX_SESSION
 
     try:
@@ -91,6 +117,11 @@ def start_phoenix_server(host: str = "127.0.0.1", port: int = 6006) -> str:
 
 
 def _is_url_reachable(url: str, timeout_seconds: float = 1.5) -> bool:
+    """Check whether a Phoenix UI URL responds to a quick HTTP request.
+
+    Output:
+    - Returns ``True`` if the URL responds successfully, otherwise ``False``.
+    """
     try:
         with urlopen(url, timeout=timeout_seconds) as response:
             return response.status < 500
@@ -99,6 +130,11 @@ def _is_url_reachable(url: str, timeout_seconds: float = 1.5) -> bool:
 
 
 def _local_url_fallbacks(url: str) -> list[str]:
+    """Generate localhost and 127.0.0.1 variants of the same local URL.
+
+    Output:
+    - Returns a short list of candidate URL strings.
+    """
     parsed = urlparse(url)
     host = parsed.hostname
     if host == "localhost":
@@ -119,6 +155,14 @@ def setup_phoenix_observability(
     raise_on_missing: bool = True,
 ) -> PhoenixObservabilityStatus:
     """Configure Phoenix/OpenInference tracing for LlamaIndex.
+
+    Purpose:
+    - Create the OpenTelemetry tracer provider that exports spans to Phoenix.
+    - Optionally launch the Phoenix UI server.
+    - Install the LlamaIndex instrumentor so retrieval and LLM calls emit spans automatically.
+
+    Output:
+    - Returns a ``PhoenixObservabilityStatus`` object describing whether tracing is active.
 
     Call this before creating query engines or chat engines. Phoenix receives OpenTelemetry
     spans from LlamaIndex, so your retrieval calls, LLM calls, prompts, latency, and errors
@@ -208,7 +252,15 @@ def trace_chat_session(
     user_id: str | None = None,
     metadata: dict[str, Any] | None = None,
 ) -> Iterator[None]:
-    """Attach Phoenix session/user metadata to spans created inside this block."""
+    """Attach Phoenix session/user metadata to spans created inside this block.
+
+    Purpose:
+    - Tag all child spans inside the ``with`` block with the same saved chat session id.
+    - Optionally attach user id or extra metadata such as which interface was used.
+
+    Output:
+    - Acts as a context manager. It does not return a normal value.
+    """
     try:
         from phoenix.otel import using_metadata, using_session, using_user
     except (ImportError, ModuleNotFoundError):
@@ -234,6 +286,15 @@ def trace_rag_chat_turn(
     message: str,
 ) -> Iterator[Any]:
     """Create a visible parent span for one user chat turn.
+
+    Purpose:
+    - Add one top-level business span that represents the full user turn.
+    - Store app-level metadata such as chat id, interface name, embedding model, and LLM model.
+    - Make Phoenix timelines easier to inspect than relying only on library-generated spans.
+
+    Output:
+    - Acts as a context manager that yields the active span object when tracing is available.
+    - Yields ``None`` when OpenTelemetry dependencies are missing.
 
     LlamaIndex instrumentation should create child spans for retrieval and LLM calls, but this
     parent span guarantees Phoenix has one trace per Chainlit message and stores app-level config.

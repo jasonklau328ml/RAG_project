@@ -29,6 +29,17 @@ LlmProvider = Literal["ollama", "huggingface"]
 
 
 def _load_huggingface_api_key() -> str:
+    """Find the Hugging Face API key needed for cloud-hosted chat models.
+
+    Purpose:
+    - Look for the secret in environment variables first, because that is the safest place.
+    - Fall back to ``src.utils_private`` so the notebook and app still work in a local-only setup.
+    - Fail with a clear message when no key is available.
+
+    Output:
+    - Returns the API key as a non-empty string.
+    - Raises ``RuntimeError`` when no usable key can be found.
+    """
     for env_name in ("HF_TOKEN", "HUGGINGFACEHUB_API_TOKEN", "HUGGINGFACE_API_KEY"):
         api_key = os.getenv(env_name, "").strip()
         if api_key:
@@ -46,6 +57,16 @@ def _load_huggingface_api_key() -> str:
 
 
 def resolve_huggingface_model(model_key_or_id: str) -> str:
+    """Convert a short model nickname into the full Hugging Face model id.
+
+    Purpose:
+    - Let configuration stay friendly for beginners by allowing keys like ``deepseek_v3``.
+    - Keep the mapping between short names and real model ids in one place.
+
+    Output:
+    - Returns the full model id if the input matches a known nickname.
+    - Otherwise returns the original input unchanged.
+    """
     return HUGGINGFACE_CHAT_MODELS.get(model_key_or_id, model_key_or_id)
 
 
@@ -57,6 +78,17 @@ def create_llm(
     huggingface_provider: str = "auto",
     huggingface_api_key: str | None = None,
 ):
+    """Create the language model object that LlamaIndex will call to generate answers.
+
+    Purpose:
+    - Support both a local Ollama model and a hosted Hugging Face chat model behind one function.
+    - Return both the LLM object and the exact model name that was resolved, so session metadata
+      and Phoenix traces can record which model answered.
+
+    Output:
+    - Returns a tuple ``(llm_object, resolved_model_name)``.
+    - Raises ``ValueError`` if the requested provider is not supported.
+    """
     if llm_provider == LLM_PROVIDER_OLLAMA:
         return Ollama(model=ollama_model, request_timeout=120.0), ollama_model
 
@@ -83,6 +115,17 @@ def configure_llama_index(
     huggingface_provider: str = "auto",
     huggingface_api_key: str | None = None,
 ) -> str:
+    """Populate LlamaIndex global settings with the embedding model and LLM.
+
+    Purpose:
+    - LlamaIndex reads ``Settings.embed_model`` and ``Settings.llm`` as shared defaults.
+    - Centralizing this setup ensures every retriever, query engine, and chat engine uses the
+      same embedding and generation configuration.
+
+    Output:
+    - Returns the final LLM model name that was selected.
+    - As a side effect, updates ``llama_index.core.Settings``.
+    """
     Settings.embed_model = create_embedding_model(embed_model_name)
     Settings.llm, resolved_llm_model = create_llm(
         llm_provider=llm_provider,
@@ -109,6 +152,17 @@ def create_rag_app(
     memory_token_limit: int = DEFAULT_MEMORY_TOKEN_LIMIT,
     chat_system_prompt: str = DEFAULT_CHAT_SYSTEM_PROMPT,
 ) -> RagNewsChatbot:
+    """Assemble the full reusable RAG application from storage, retrieval, and LLM parts.
+
+    Purpose:
+    - Configure LlamaIndex defaults.
+    - Reconnect to the persisted Chroma collection.
+    - Create the JSON-backed chat session store.
+    - Return a single ``RagNewsChatbot`` facade that the notebook and Chainlit UI can use.
+
+    Output:
+    - Returns a ready-to-use ``RagNewsChatbot`` instance.
+    """
     resolved_llm_model = configure_llama_index(
         embed_model_name=embed_model_name,
         llm_provider=llm_provider,

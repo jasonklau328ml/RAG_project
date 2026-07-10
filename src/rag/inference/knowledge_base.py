@@ -14,6 +14,15 @@ class ChromaKnowledgeBase:
     """Adapter around the persisted ChromaDB collection used by the RAG app."""
 
     def __init__(self, chroma_dir: Path, collection_name: str):
+        """Remember where the persisted vector database lives and delay heavy loading.
+
+        Purpose:
+        - Store connection details for the Chroma collection.
+        - Defer actual database reads until a property such as ``collection`` or ``index`` is used.
+
+        Output:
+        - Initializes the object state on ``self``.
+        """
         self.chroma_dir = chroma_dir
         self.collection_name = collection_name
         self._client = None
@@ -24,6 +33,15 @@ class ChromaKnowledgeBase:
 
     @property
     def collection(self):
+        """Open the Chroma collection that stores embedded text chunks.
+
+        Purpose:
+        - Connect lazily to the on-disk vector database.
+        - Reuse the same collection object after the first access.
+
+        Output:
+        - Returns the Chroma collection object.
+        """
         if self._collection is None:
             self.chroma_dir.mkdir(parents=True, exist_ok=True)
             self._client = chromadb.PersistentClient(path=str(self.chroma_dir))
@@ -32,6 +50,14 @@ class ChromaKnowledgeBase:
 
     @property
     def index(self) -> VectorStoreIndex:
+        """Build the LlamaIndex vector index wrapper over the Chroma collection.
+
+        Purpose:
+        - Give LlamaIndex a standard interface for semantic retrieval over stored embeddings.
+
+        Output:
+        - Returns a ``VectorStoreIndex`` instance.
+        """
         if self._index is None:
             vector_store = ChromaVectorStore(chroma_collection=self.collection)
             self._index = VectorStoreIndex.from_vector_store(
@@ -42,6 +68,16 @@ class ChromaKnowledgeBase:
 
     @property
     def nodes(self) -> list[TextNode]:
+        """Load stored documents from Chroma and rebuild them as LlamaIndex text nodes.
+
+        Purpose:
+        - BM25 keyword retrieval needs raw text nodes, not only embeddings.
+        - Convert Chroma records into the ``TextNode`` objects expected by LlamaIndex retrievers.
+
+        Output:
+        - Returns a list of ``TextNode`` objects.
+        - Raises ``ValueError`` if the collection does not contain any stored text.
+        """
         if self._nodes is None:
             records = self.collection.get(include=["documents", "metadatas"])
             documents = records.get("documents", []) or []
@@ -60,6 +96,15 @@ class ChromaKnowledgeBase:
         return self._nodes
 
     def bm25_retriever(self, top_k: int) -> BM25Retriever:
+        """Create or reuse a BM25 keyword retriever for a given result count.
+
+        Purpose:
+        - Support exact or near-exact word matching alongside embedding search.
+        - Cache retrievers so repeated calls with the same ``top_k`` are cheap.
+
+        Output:
+        - Returns a ``BM25Retriever`` instance.
+        """
         if top_k not in self._bm25_cache:
             self._bm25_cache[top_k] = BM25Retriever.from_defaults(
                 nodes=self.nodes,
@@ -73,6 +118,16 @@ class ChromaKnowledgeBase:
         candidate_top_k: int | None = None,
         rrf_k: int = 60,
     ) -> HybridRetriever:
+        """Combine semantic search and keyword search into one hybrid retriever.
+
+        Purpose:
+        - Semantic search is good for meaning similarity.
+        - BM25 is good for exact important words and names.
+        - Combining both usually gives more robust RAG retrieval than using only one method.
+
+        Output:
+        - Returns a ``HybridRetriever`` instance.
+        """
         candidate_count = candidate_top_k if candidate_top_k is not None else max(final_top_k * 2, 10)
         semantic_retriever = self.index.as_retriever(similarity_top_k=candidate_count)
         keyword_retriever = self.bm25_retriever(top_k=candidate_count)
@@ -85,4 +140,9 @@ class ChromaKnowledgeBase:
         )
 
     def count(self) -> int:
+        """Count how many vector records are stored in the Chroma collection.
+
+        Output:
+        - Returns the collection size as an integer.
+        """
         return self.collection.count()

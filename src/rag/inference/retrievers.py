@@ -14,7 +14,15 @@ def reciprocal_rank_fusion(
     top_k: int,
     rrf_k: int = 60,
 ) -> list[NodeWithScore]:
-    """Fuse semantic and keyword rankings without manually calibrating their scores."""
+    """Fuse semantic and keyword rankings without manually calibrating their scores.
+
+    Purpose:
+    - Combine two ranked lists that may use very different score scales.
+    - Reward documents that appear near the top of either list, especially if they appear in both.
+
+    Output:
+    - Returns one merged list of ``NodeWithScore`` objects, ordered from best to worst.
+    """
     fused_scores: dict[str, float] = defaultdict(float)
     node_lookup: dict[str, NodeWithScore] = {}
 
@@ -46,6 +54,11 @@ class HybridRetriever(BaseRetriever):
         final_top_k: int = DEFAULT_TOP_K,
         rrf_k: int = 60,
     ):
+        """Store the two child retrievers that power hybrid search.
+
+        Output:
+        - Initializes the retriever object for later use by LlamaIndex.
+        """
         self._semantic_retriever = semantic_retriever
         self._keyword_retriever = keyword_retriever
         self._final_top_k = final_top_k
@@ -53,6 +66,16 @@ class HybridRetriever(BaseRetriever):
         super().__init__()
 
     def _retrieve(self, query_bundle: QueryBundle) -> list[NodeWithScore]:
+        """Run both retrieval methods and merge their results.
+
+        Purpose:
+        - Ask the semantic retriever for meaning-based matches.
+        - Ask the BM25 retriever for keyword-heavy matches.
+        - Use reciprocal rank fusion to produce the final ranked list.
+
+        Output:
+        - Returns a list of retrieved nodes with fused scores.
+        """
         semantic_results = self._semantic_retriever.retrieve(query_bundle)
         keyword_results = self._keyword_retriever.retrieve(query_bundle)
 
